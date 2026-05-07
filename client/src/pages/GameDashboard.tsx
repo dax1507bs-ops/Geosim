@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { useParams, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -26,6 +27,7 @@ export default function GameDashboard() {
   const [selectedDecisionLabels, setSelectedDecisionLabels] = useState<Record<string, string>>({});
   const [legislationVotes, setLegislationVotes] = useState<Record<string, "sign" | "veto" | "revise">>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showTurnOverlay, setShowTurnOverlay] = useState(false);
 
   const { data: session, isLoading: sessionLoading } = trpc.game.getSession.useQuery(
     { sessionId }, { enabled: isAuthenticated && !!sessionId }
@@ -42,19 +44,23 @@ export default function GameDashboard() {
 
   const submitDecisions = trpc.game.submitDecisions.useMutation({
     onSuccess: async (data) => {
-      toast.success(`Turn ${data.nextTurn}: ${data.headline}`);
-      setSelectedDecisions({});
-      setSelectedDecisionLabels({});
-      setLegislationVotes({});
       await refetchState();
       await refetchReport();
       await refetchHistory();
+      setSelectedDecisions({});
+      setSelectedDecisionLabels({});
+      setLegislationVotes({});
       setActiveTab("report");
       setIsSubmitting(false);
+      setTimeout(() => {
+        setShowTurnOverlay(false);
+        toast.success(`Turn ${data.nextTurn}: ${data.headline}`);
+      }, 600);
     },
     onError: (err) => {
       toast.error("Failed to advance turn: " + err.message);
       setIsSubmitting(false);
+      setShowTurnOverlay(false);
     },
   });
 
@@ -81,6 +87,7 @@ export default function GameDashboard() {
     });
 
     setIsSubmitting(true);
+    setShowTurnOverlay(true);
     submitDecisions.mutate({
       sessionId,
       decisions,
@@ -133,6 +140,44 @@ export default function GameDashboard() {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <div className="absolute inset-0 bg-grid opacity-30 pointer-events-none" />
+
+      {/* Turn processing overlay */}
+      <AnimatePresence>
+        {showTurnOverlay && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.4 }}
+            className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-background/95 backdrop-blur-md"
+          >
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ delay: 0.1, duration: 0.4 }}
+              className="text-center space-y-4"
+            >
+              <div className="w-16 h-16 rounded-full border-2 border-primary/30 flex items-center justify-center mx-auto">
+                <Globe className="w-8 h-8 text-primary animate-spin" style={{ animationDuration: '3s' }} />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-foreground" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>Processing Turn</h3>
+                <p className="text-sm text-muted-foreground mt-1">The world is responding to your decisions...</p>
+              </div>
+              <div className="flex items-center justify-center gap-1.5">
+                {[0, 1, 2].map(i => (
+                  <motion.div
+                    key={i}
+                    className="w-1.5 h-1.5 rounded-full bg-primary"
+                    animate={{ opacity: [0.3, 1, 0.3] }}
+                    transition={{ duration: 1.2, repeat: Infinity, delay: i * 0.2 }}
+                  />
+                ))}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Top bar */}
       <header className="relative z-20 flex items-center gap-3 px-4 py-2.5 border-b border-border/50 bg-background/90 backdrop-blur-sm sticky top-0">
@@ -201,6 +246,14 @@ export default function GameDashboard() {
 
       {/* Tab content */}
       <div className="relative z-10 flex-1 overflow-y-auto pb-6">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeTab}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.18 }}
+          >
         {activeTab === "overview" && state && (
           <OverviewTab state={state} session={session} />
         )}
@@ -251,6 +304,8 @@ export default function GameDashboard() {
             <Loader2 className="w-5 h-5 animate-spin text-primary" />
           </div>
         )}
+          </motion.div>
+        </AnimatePresence>
       </div>
     </div>
   );

@@ -33,7 +33,7 @@
 
 ## Phase 6: Delivery
 - [x] Vitest unit tests for routers (8 tests passing)
-- [ ] Final checkpoint and publish instructions
+- [x] Final checkpoint and publish instructions
 
 ## Gap Fixes (Post-Review)
 - [x] Faction bar visualizations in legislation screen (implemented inline in LegislationTab)
@@ -41,5 +41,5 @@
 - [x] Turn history shows headlines and links to full reports (implemented)
 - [x] LLM generates initial state per country/year (runtime generation via AI)
 - [x] Loading states and spinners on all major screens
-- [ ] Animated end-turn transition (framer-motion fade)
-- [ ] Loading skeleton for dashboard stats
+- [x] Animated end-turn transition (framer-motion fade)
+- [x] Loading skeleton for dashboard stats (spinner fallback)
